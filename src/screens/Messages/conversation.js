@@ -153,7 +153,7 @@ const ConversationScreens = () => {
                   time="2 days"
                 />
               </View>
-              <View style={[tw`mt-8 mb-10`]}>
+              <View style={[tw`mt-8 mb-40`]}>
                 <ConversationItem
                   icon={faCheckDouble}
                   image={User6}

@@ -12,6 +12,8 @@ export const APP_THEMES = {
     smallTitle: 16,
     subtitle: 18,
     large: 25,
+    xl: 30,
+    xxl: 50,
     medium: 15,
     small: 11,
     xsmall: 9,

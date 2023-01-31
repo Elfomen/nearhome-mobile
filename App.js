@@ -32,7 +32,11 @@ import AppLoading from "expo-app-loading";
 import FilteredResult from "./src/screens/filteredResult/filter";
 import MainTabNavigator from "./src/screens/MainTabNavigator";
 import HouseDetails from "./src/screens/houseDetails/details";
+import { useState } from "react";
+import LoginScreen from "./src/screens/login/login";
+import RegisterScreen from "./src/screens/register/register";
 export default function App() {
+  const [auth, setAuth] = useState(true);
   const Tab = createBottomTabNavigator();
   const Stack = createNativeStackNavigator();
 
@@ -57,7 +61,11 @@ export default function App() {
           <Stack.Screen name="Home" component={MainTabNavigator} />
           <Stack.Screen name="FilteredResult" component={FilteredResult} />
           <Stack.Screen name="HouseDetails" component={HouseDetails} />
-          <Stack.Screen name="MessagesScreens" component={MessagesScreen} />
+          <Stack.Screen name="RegisterScreen" component={RegisterScreen} />
+          <Stack.Screen
+            name="MessagesScreens"
+            component={auth ? MessagesScreen : LoginScreen}
+          />
         </Stack.Navigator>
 
         <StatusBar barStyle="light-content" />

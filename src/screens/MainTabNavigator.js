@@ -15,12 +15,29 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import WalletScreen from "./wallet/wallet";
 import ConversationScreens from "./Messages/conversation";
+import { useState } from "react";
+import LoginScreen from "./login/login";
 
 const MainTabNavigator = () => {
+  const [auth, setAuth] = useState(false);
   const Tab = createBottomTabNavigator();
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
+        tabBarStyle: {
+          backgroundColor: "white",
+          padding: 10,
+          paddingBottom: 8,
+          height: 60,
+          borderRadius: 50,
+          marginBottom: 10,
+          position: "absolute",
+          borderTopColor: "#eeeeee",
+          borderColor: "#eeeeee",
+          marginLeft: 10,
+          marginRight: 10,
+          borderWidth: 0.8,
+        },
         headerShown: false,
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
@@ -43,9 +60,15 @@ const MainTabNavigator = () => {
       })}
     >
       <Tab.Screen name="HomeScreen" component={HomeScreen} />
-      <Tab.Screen name="Messages" component={ConversationScreens} />
-      <Tab.Screen name="Wallet" component={WalletScreen} />
-      <Tab.Screen name="Settings" component={SettingsScreen} />
+      <Tab.Screen
+        name="Messages"
+        component={auth ? ConversationScreens : LoginScreen}
+      />
+      <Tab.Screen name="Wallet" component={auth ? WalletScreen : LoginScreen} />
+      <Tab.Screen
+        name="Settings"
+        component={auth ? SettingsScreen : LoginScreen}
+      />
     </Tab.Navigator>
   );
 };

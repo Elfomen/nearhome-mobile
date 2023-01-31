@@ -11,6 +11,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
 import { useNavigation } from "@react-navigation/native";
+import { useEffect } from "react";
 import {
   ScrollView,
   StyleSheet,
@@ -24,6 +25,10 @@ import User from "../../assets/images/user1.jpg";
 import { APP_THEMES } from "../../utils/themes";
 const MessagesScreen = () => {
   const navigation = useNavigation();
+
+  useEffect(() => {
+    console.log("The page is loadded");
+  }, []);
 
   return (
     <View

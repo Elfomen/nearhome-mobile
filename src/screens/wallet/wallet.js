@@ -185,9 +185,9 @@ const WalletScreen = () => {
               amount="- 12000"
             />
           </View>
-          {[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1].map((res) => {
+          {[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1].map((res, i) => {
             return (
-              <View style={[tw`mt-3`]}>
+              <View style={[tw`mt-3`]} key={i}>
                 <TransactionView
                   image={Mtn}
                   date="18:00"
