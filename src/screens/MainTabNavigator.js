@@ -17,8 +17,11 @@ import WalletScreen from "./wallet/wallet";
 import ConversationScreens from "./Messages/conversation";
 import { useState } from "react";
 import LoginScreen from "./login/login";
+import { useSelector } from "react-redux";
+import { userSelectors } from "../redux/user/user.selectors";
 
 const MainTabNavigator = () => {
+  const { currentUser } = useSelector(userSelectors.selectUser);
   const [auth, setAuth] = useState(false);
   const Tab = createBottomTabNavigator();
   return (
@@ -62,12 +65,15 @@ const MainTabNavigator = () => {
       <Tab.Screen name="HomeScreen" component={HomeScreen} />
       <Tab.Screen
         name="Messages"
-        component={auth ? ConversationScreens : LoginScreen}
+        component={currentUser.token ? ConversationScreens : LoginScreen}
       />
-      <Tab.Screen name="Wallet" component={auth ? WalletScreen : LoginScreen} />
+      <Tab.Screen
+        name="Wallet"
+        component={currentUser.token ? WalletScreen : LoginScreen}
+      />
       <Tab.Screen
         name="Settings"
-        component={auth ? SettingsScreen : LoginScreen}
+        component={currentUser.token ? SettingsScreen : LoginScreen}
       />
     </Tab.Navigator>
   );

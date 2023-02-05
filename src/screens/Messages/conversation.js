@@ -5,6 +5,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
 import {
+  ActivityIndicator,
   ImageBackground,
   Platform,
   ScrollView,
@@ -12,6 +13,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  Vibration,
 } from "react-native";
 import { View } from "react-native";
 import { Avatar } from "react-native-elements";
@@ -31,14 +33,144 @@ import User9 from "../../assets/images/user9.jpeg";
 import { StyleSheet } from "react-native";
 import { GLOBAL_SERVICE } from "../../utils/globalService";
 import { useNavigation } from "@react-navigation/native";
+import { useDispatch, useSelector } from "react-redux";
+import { useEffect, useState } from "react";
+import { conversationSelectors } from "../../redux/ conversations/conversation.selectors";
+import { userActions } from "../../redux/user/user.actions";
+import { conversationActions } from "../../redux/ conversations/conversation.actions";
+import { userSelectors } from "../../redux/user/user.selectors";
+import { Audio } from "expo-av";
+import { socket } from "../../../socket";
+import { current } from "@reduxjs/toolkit";
 
 const ConversationScreens = () => {
+  const dispatch = useDispatch();
+  const { isLoading, error, conversations, unread } = useSelector(
+    conversationSelectors.selectConversations
+  );
+  const navigation = useNavigation();
+  const { currentUser } = useSelector(userSelectors.selectUser);
+  const [sound, setSound] = useState();
+  const [lastMessage, setLastmessage] = useState(null);
+
+  let io = socket.getSocket();
+
+  const getConversationProfileImage = (conversation) => {
+    if (conversation.participants[0]?._id == conversations.userId) {
+      return [
+        conversation.participants[1]?.profileImageUrl || null,
+        conversation.participants[1]?.firstname,
+      ];
+    } else {
+      return [
+        conversation.participants[0]?.profileImageUrl || null,
+        conversation.participants[0]?.firstname,
+      ];
+    }
+  };
+
+  const getLastmessageContent = (conversation) => {
+    let type = "";
+    let content = "";
+    if (conversation?.lastMessage?.audioUrl) {
+      type = "audio";
+      content = conversation?.lastMessage?.audioUrl;
+    } else if (conversation?.lastMessage?.videoUrl) {
+      type = "video";
+      content = conversation?.lastMessage?.videoUrl;
+    } else if (conversation?.lastMessage?.docUrl) {
+      type = "doc";
+      content = conversation?.lastMessage?.docUrl;
+    } else if (conversation?.lastMessage?.content) {
+      type = "text";
+      content = conversation?.lastMessage?.content;
+    } else {
+      type = null;
+      content = null;
+    }
+
+    return { type, content };
+  };
+
+  async function playSound() {
+    try {
+      console.log("Loading Sound");
+      const { sound } = await Audio.Sound.createAsync(
+        require("../../assets/audio/whatNot1.mp3")
+      );
+
+      setSound(sound);
+
+      console.log("Playing Sound");
+      await sound.playAsync();
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  useEffect(() => {
+    return sound
+      ? () => {
+          console.log("Unloading Sound");
+          sound.unloadAsync();
+        }
+      : undefined;
+  }, [sound]);
+
+  const onConvPress = (conversation) => {
+    // dispatch(conversationActions.setSelectedConversationAsync(conversation));
+    navigation.navigate("MessagesScreens", {
+      conversationId: conversation._id,
+      user1: conversation.participants[0],
+      user2: conversation.participants[1],
+    });
+  };
+
+  useEffect(() => {
+    io.on("conversation", (data) => {
+      if (data.action === "last_message") {
+        console.log("**********************************************888");
+        console.log(data.to);
+        console.log(currentUser.userId);
+        setLastmessage({
+          content: data.message.content,
+          conversation: data.message.conversation,
+          sender: data.message.sender,
+          date: data?.message?.updatedAt || "00:00",
+        });
+        dispatch(conversationActions.incrementNotificationAsync());
+        if (data.to === currentUser.userId) {
+          Vibration.vibrate(2 * 1000);
+          playSound();
+          // if (conversations?.conversations?.length <= 0) {
+          //   dispatch(
+          //     conversationActions.fetchConversationAsync(currentUser.token)
+          //   );
+          // }
+        }
+      }
+
+      return () => io.removeAllListeners("conversation");
+    });
+  }, [io]);
+
+  useEffect(() => {
+    dispatch(conversationActions.fetchConversationAsync(currentUser.token));
+    console.log("********** last messages *******************88");
+    console.log(lastMessage);
+  }, []);
   return (
     <View
       style={[
         { paddingTop: Platform.OS == "android" && StatusBar.currentHeight },
       ]}
     >
+      {isLoading && (
+        <ActivityIndicator
+          color={APP_THEMES.colors.secondary_color_blue}
+          size="large"
+        />
+      )}
       <View style={[tw`pt-5 pl-3 pr-3`, { backgroundColor: "white" }]}>
         <Text
           style={[
@@ -58,110 +190,37 @@ const ConversationScreens = () => {
         <View>
           <View>
             <View style={[tw`mr-5 ml-5  mb-20`]}>
-              <View style={[tw`mt-8`]}>
-                <ConversationItem
-                  image={User1}
-                  title="Fomena Yannick"
-                  subtitle="Hey yanndevs 👋 how are you?"
-                  time="11:20"
-                  icon={faCheck}
-                />
-              </View>
-              <View style={[tw`mt-8`]}>
-                <ConversationItem
-                  image={User2}
-                  title="Manboll Form"
-                  subtitle="Manborn you were supposed to pay me today, what is ...."
-                  time="11:21"
-                  icon={faCheckDouble}
-                  iconColor={APP_THEMES.colors.secondary_color_blue}
-                />
-              </View>
-              <View style={[tw`mt-8`]}>
-                <ConversationItem
-                  icon={faCheckDouble}
-                  image={User3}
-                  title="Manboll Form"
-                  subtitle="Manborn you were supposed to pay me today, what is ...."
-                  time="11:44"
-                  iconColor={APP_THEMES.colors.secondary_color_blue}
-                />
-              </View>
-              <View style={[tw`mt-8`]}>
-                <ConversationItem
-                  icon={faCheckDouble}
-                  image={User4}
-                  title="Manboll Form"
-                  subtitle="Manborn you were supposed to pay me today, what is ...."
-                  time="11:53"
-                />
-              </View>
-              <View style={[tw`mt-8`]}>
-                <ConversationItem
-                  icon={faCheckDouble}
-                  image={User5}
-                  title="Manboll Form"
-                  subtitle="Manborn you were supposed to pay me today, what is ...."
-                  time="12:32"
-                  iconColor={APP_THEMES.colors.secondary_color_blue}
-                />
-              </View>
-              <View style={[tw`mt-8`]}>
-                <ConversationItem
-                  icon={faCheckDouble}
-                  image={User6}
-                  title="Manboll Form"
-                  subtitle="Manborn you were supposed to pay me today, what is ...."
-                  time="12:55"
-                  iconColor={APP_THEMES.colors.secondary_color_blue}
-                />
-              </View>
-              <View style={[tw`mt-8`]}>
-                <ConversationItem
-                  icon={faCheckDouble}
-                  image={User7}
-                  title="Manboll Form"
-                  subtitle="Manborn you were supposed to pay me today, what is ...."
-                  time="yesterday"
-                  iconColor={APP_THEMES.colors.secondary_color_blue}
-                />
-              </View>
-              <View style={[tw`mt-8`]}>
-                <ConversationItem
-                  icon={faCheckDouble}
-                  image={User8}
-                  title="Manboll Form"
-                  subtitle="Manborn you were supposed to pay me today, what is ...."
-                  time="yesterday"
-                />
-              </View>
-              <View style={[tw`mt-8`]}>
-                <ConversationItem
-                  icon={faCheckDouble}
-                  image={User9}
-                  title="Manboll Form"
-                  subtitle="Manborn you were supposed to pay me today, what is ...."
-                  time="2 days"
-                />
-              </View>
-              <View style={[tw`mt-8`]}>
-                <ConversationItem
-                  icon={faCheckDouble}
-                  image={User4}
-                  title="Manboll Form"
-                  subtitle="Manborn you were supposed to pay me today, what is ...."
-                  time="2 days"
-                />
-              </View>
-              <View style={[tw`mt-8 mb-40`]}>
-                <ConversationItem
-                  icon={faCheckDouble}
-                  image={User6}
-                  title="Manboll Form"
-                  time="2 days"
-                  subtitle="Manborn you were supposed to pay me today, what is ...."
-                />
-              </View>
+              {conversations?.conversations?.map((conv, i) => {
+                return (
+                  <View style={[tw`mt-8`]} key={i}>
+                    <ConversationItem
+                      image={getConversationProfileImage(conv)[0] || User2}
+                      title={getConversationProfileImage(conv)[1]}
+                      subtitle={
+                        (lastMessage?.conversation == conv._id &&
+                          lastMessage?.content) ||
+                        conv.lastMessage?.content
+                      }
+                      time="11:20"
+                      icon={faCheck}
+                      currentUser={currentUser}
+                      unread={unread}
+                      date={
+                        (lastMessage?.conversation == conv._id &&
+                          lastMessage?.date) ||
+                        conv.lastMessage?.updatedAt ||
+                        "00:01"
+                      }
+                      sender={
+                        (lastMessage?.conversation == conv._id &&
+                          lastMessage?.sender) ||
+                        conv.lastMessage?.sender
+                      }
+                      onPress={() => onConvPress(conv)}
+                    />
+                  </View>
+                );
+              })}
             </View>
           </View>
         </View>
@@ -193,18 +252,34 @@ const ConversationSearch = () => {
 };
 
 const ConversationItem = (props) => {
-  const { image, title, subtitle, time, icon, iconColor } = props;
-  const navigation = useNavigation();
+  const {
+    image,
+    title,
+    subtitle,
+    time,
+    icon,
+    iconColor,
+    currentUser,
+    onPress,
+    sender,
+    unread,
+    date,
+  } = props;
+
+  let correctDate = new Date(date).toLocaleTimeString();
 
   return (
-    <TouchableOpacity
-      onPress={() => GLOBAL_SERVICE.navigateTo(navigation, "MessagesScreens")}
-    >
+    <TouchableOpacity onPress={onPress}>
       <View
-        style={{ flexDirection: "row", alignItems: "center", width: "100%" }}
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          width: "100%",
+          position: "relative",
+        }}
       >
         <View style={[tw`mr-8`, { position: "relative", flex: 1 }]}>
-          <Avatar source={image} rounded size="medium" />
+          <Avatar source={User1} rounded size="medium" />
           <View
             style={[styles.notificationPoint, { backgroundColor: "green" }]}
           ></View>
@@ -216,10 +291,13 @@ const ConversationItem = (props) => {
         </View>
 
         <View style={[{ flexDirection: "row", alignItems: "center", flex: 2 }]}>
-          <FontAwesomeIcon
-            icon={icon}
-            color={iconColor || APP_THEMES.colors.color_gray}
-          />
+          {sender === currentUser.userId && (
+            <FontAwesomeIcon
+              icon={icon}
+              color={iconColor || APP_THEMES.colors.color_gray}
+            />
+          )}
+
           <Text
             style={[
               tw`ml-3`,
@@ -230,9 +308,20 @@ const ConversationItem = (props) => {
               },
             ]}
           >
-            {time}
+            {correctDate}
           </Text>
         </View>
+
+        {unread > 0 && (
+          <View
+            style={[
+              { position: "absolute", right: 0 },
+              styles.notificationCount,
+            ]}
+          >
+            <Text style={{ color: "white", fontWeight: "800" }}>{unread}</Text>
+          </View>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -259,6 +348,16 @@ const styles = StyleSheet.create({
     fontFamily: APP_THEMES.fontFamilies.title,
     fontSize: APP_THEMES.fontSizez.small,
     color: APP_THEMES.colors.color_gray,
+  },
+  notificationCount: {
+    color: "white",
+    backgroundColor: APP_THEMES.colors.secondary_color_blue,
+    width: 20,
+    height: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    borderRadius: 10,
   },
 });
 

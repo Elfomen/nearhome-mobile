@@ -1,5 +1,7 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   ImageBackground,
   ScrollView,
   StatusBar,
@@ -27,8 +29,79 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
 import { LinearGradient } from "react-native-svg";
 import { useNavigation } from "@react-navigation/native";
+import FlashMessage, { showMessage } from "react-native-flash-message";
+import { useDispatch, useSelector } from "react-redux";
+import { userActions } from "../../redux/user/user.actions";
+import { userSelectors } from "../../redux/user/user.selectors";
+
 const RegisterScreen = () => {
+  const { error, isLoading } = useSelector(userSelectors.selectUser);
+
+  const [justLoaded, setJustLoaded] = useState(true);
+
+  const [userData, setUserData] = useState({
+    firstname: null,
+    lastname: null,
+    username: null,
+    phoneNumber: null,
+    email: null,
+    password: null,
+    userType: "tenant",
+  });
   const navigation = useNavigation();
+
+  const dispatch = useDispatch();
+
+  const checkUserData = () => {
+    if (!userData.username) return "Username name is required";
+    if (!userData.firstname) return "First name is required";
+    if (!userData.lastname) return "Lastname name is required";
+    if (!userData.phoneNumber) return "Phone Number is required";
+    if (!userData.email) return "Email is required";
+    if (!userData.password) return "Password  is required";
+
+    return true;
+  };
+
+  const onInputChanged = (key, value) => {
+    let newOb = {};
+    newOb[key] = value;
+    setUserData({ ...userData, ...newOb });
+  };
+
+  const sigupUser = () => {
+    let dataValid = checkUserData();
+    if (dataValid === true) {
+      dispatch(userActions.signupUser(userData));
+    } else {
+      Alert.alert("Error", dataValid, [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        { text: "OK" },
+      ]);
+    }
+  };
+
+  useEffect(() => {
+    if (!justLoaded) {
+      if (error) {
+        Alert.alert("Error", error, [
+          {
+            text: "Cancel",
+            style: "cancel",
+          },
+          { text: "OK" },
+        ]);
+      }
+    }
+  }, [error]);
+
+  useEffect(() => {
+    setJustLoaded(false);
+  }, []);
+
   return (
     <View
       style={[
@@ -53,6 +126,7 @@ const RegisterScreen = () => {
             },
           ]}
         ></View>
+
         <View
           style={[
             { flexDirection: "row", alignItems: "center" },
@@ -83,22 +157,43 @@ const RegisterScreen = () => {
 
         <ScrollView style={[tw`ml-5 mr-5 mt-7`]}>
           <View style={[tw`mt-10`]}>
-            <AuthenticationInput placeholder="Username" firstIcon={faUser} />
+            <AuthenticationInput
+              defaultValue={userData.username || ""}
+              onChange={(e) => onInputChanged("username", e)}
+              placeholder="Username"
+              hasError={userData.username ? false : true}
+              firstIcon={faUser}
+            />
           </View>
 
           <View style={[{ flexDirection: "row", alignItems: "center" }]}>
             <View style={[tw`mt-10 mr-1`, { flex: 1 }]}>
-              <AuthenticationInput placeholder="Firstname" firstIcon={faUser} />
+              <AuthenticationInput
+                placeholder="Firstname"
+                hasError={userData.firstname ? false : true}
+                defaultValue={userData.firstname || ""}
+                onChange={(e) => onInputChanged("firstname", e)}
+                firstIcon={faUser}
+              />
             </View>
             <View style={[tw`mt-10`, { flex: 1 }]}>
-              <AuthenticationInput placeholder="Lastname" firstIcon={faUser} />
+              <AuthenticationInput
+                defaultValue={userData.lastname || ""}
+                onChange={(e) => onInputChanged("lastname", e)}
+                placeholder="Lastname"
+                firstIcon={faUser}
+                hasError={userData.lastname ? false : true}
+              />
             </View>
           </View>
 
           <View style={[tw`mt-10`]}>
             <AuthenticationInput
+              defaultValue={userData.password || ""}
+              onChange={(e) => onInputChanged("password", e)}
               placeholder="Password"
               firstIcon={faLock}
+              hasError={userData.password ? false : true}
               secondIcon={faEye}
               password={true}
             />
@@ -106,33 +201,23 @@ const RegisterScreen = () => {
           <View style={[tw`mt-10`]}>
             <AuthenticationInput
               placeholder="Email"
+              hasError={userData.email ? false : true}
               firstIcon={faEnvelope}
+              defaultValue={userData.email || ""}
+              onChange={(e) => onInputChanged("email", e)}
               email={true}
             />
           </View>
           <View style={[tw`mt-10`]}>
             <AuthenticationInput
               placeholder="Phone Number"
+              hasError={userData.phoneNumber ? false : true}
+              defaultValue={userData.phoneNumber || ""}
+              onChange={(e) => onInputChanged("phoneNumber", e)}
               firstIcon={faPhone}
               phone={true}
             />
           </View>
-
-          <TouchableOpacity>
-            <Text
-              style={[
-                tw`mt-6 mr-3`,
-                {
-                  color: APP_THEMES.colors.primary_color_white,
-                  fontSize: APP_THEMES.fontSizez.small,
-                  fontFamily: APP_THEMES.fontFamilies.title,
-                  textAlign: "right",
-                },
-              ]}
-            >
-              Forgot your password?
-            </Text>
-          </TouchableOpacity>
 
           <View
             style={[
@@ -157,6 +242,7 @@ const RegisterScreen = () => {
               Create
             </Text>
             <TouchableOpacity
+              onPress={sigupUser}
               style={[
                 tw`mr-3`,
                 {
@@ -167,11 +253,18 @@ const RegisterScreen = () => {
                 },
               ]}
             >
-              <FontAwesomeIcon
-                icon={faRightLong}
-                color={APP_THEMES.colors.primary_color_white}
-                size={35}
-              />
+              <View style={[{ flexDirection: "row", alignItems: "center" }]}>
+                {!isLoading && (
+                  <FontAwesomeIcon
+                    icon={faRightLong}
+                    color={APP_THEMES.colors.primary_color_white}
+                    size={35}
+                  />
+                )}
+                {isLoading && (
+                  <ActivityIndicator size="large" color="#0099cc" />
+                )}
+              </View>
             </TouchableOpacity>
           </View>
 
@@ -214,8 +307,8 @@ const RegisterScreen = () => {
         </ScrollView>
       </ImageBackground>
 
-      <StatusBar barStyle="dark-content" />
-      <ExpoStatusBar backgroundColor="transparent" />
+      {/* <StatusBar barStyle="dark-content" />
+      <ExpoStatusBar backgroundColor="transparent" /> */}
     </View>
   );
 };
