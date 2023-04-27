@@ -14,7 +14,7 @@ import {
 } from "@expo-google-fonts/ubuntu";
 
 import RootApplication from "./index";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { socket } from "./socket";
 
 export default function App() {

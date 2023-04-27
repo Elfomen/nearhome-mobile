@@ -5,8 +5,6 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
 import {
-  ActivityIndicator,
-  ImageBackground,
   Platform,
   ScrollView,
   StatusBar,
@@ -19,16 +17,8 @@ import { View } from "react-native";
 import { Avatar } from "react-native-elements";
 import tw from "tailwind-react-native-classnames";
 import { APP_THEMES } from "../../utils/themes";
-import User from "../../assets/images/user.png";
 import User1 from "../../assets/images/user1.jpg";
 import User2 from "../../assets/images/user2.jpeg";
-import User3 from "../../assets/images/user3.jpeg";
-import User4 from "../../assets/images/user4.jpeg";
-import User5 from "../../assets/images/user5.jpeg";
-import User6 from "../../assets/images/user6.png";
-import User7 from "../../assets/images/user7.png";
-import User8 from "../../assets/images/user8.png";
-import User9 from "../../assets/images/user9.jpeg";
 
 import { StyleSheet } from "react-native";
 import { GLOBAL_SERVICE } from "../../utils/globalService";
@@ -42,8 +32,12 @@ import { userSelectors } from "../../redux/user/user.selectors";
 import { Audio } from "expo-av";
 import { socket } from "../../../socket";
 import { current } from "@reduxjs/toolkit";
-
+import LoadingRect from "../../components/loadingSkeleton/loader";
+import { createShimmerPlaceholder } from "react-native-shimmer-placeholder";
+import { LinearGradient } from "expo-linear-gradient";
 const ConversationScreens = () => {
+  const ShimerPlaceHolder = createShimmerPlaceholder(LinearGradient);
+
   const dispatch = useDispatch();
   const { isLoading, error, conversations, unread } = useSelector(
     conversationSelectors.selectConversations
@@ -130,8 +124,8 @@ const ConversationScreens = () => {
     io.on("conversation", (data) => {
       if (data.action === "last_message") {
         console.log("**********************************************888");
-        console.log(data.to);
-        console.log(currentUser.userId);
+        console.log(data.to === currentUser.userId);
+        console.log(data);
         setLastmessage({
           content: data.message.content,
           conversation: data.message.conversation,
@@ -147,6 +141,7 @@ const ConversationScreens = () => {
           //     conversationActions.fetchConversationAsync(currentUser.token)
           //   );
           // }
+          //
         }
       }
 
@@ -165,66 +160,86 @@ const ConversationScreens = () => {
         { paddingTop: Platform.OS == "android" && StatusBar.currentHeight },
       ]}
     >
-      {isLoading && (
+      {/* {isLoading && (
         <ActivityIndicator
           color={APP_THEMES.colors.secondary_color_blue}
           size="large"
         />
-      )}
+      )} */}
+
       <View style={[tw`pt-5 pl-3 pr-3`, { backgroundColor: "white" }]}>
-        <Text
-          style={[
-            {
-              fontFamily: APP_THEMES.fontFamilies.title,
-              fontSize: APP_THEMES.fontSizez.title,
-            },
-          ]}
-        >
-          Chats
-        </Text>
         <View style={[tw`mt-3 mb-3`]}>
           <ConversationSearch />
         </View>
       </View>
-      <ScrollView>
-        <View>
+
+      {/* this si the div for the loaders */}
+      {isLoading && (
+        <View style={[tw`ml-3 mr-3 mt-3 h-full`]}>
+          {[1, 1, 1, 1, 1, 1, 1, 1, 1, 1].map((val, i) => {
+            return (
+              <View
+                key={i}
+                style={[
+                  { flexDirection: "row", alignItems: "center", flex: 1 },
+                  ,
+                ]}
+              >
+                <ShimerPlaceHolder
+                  style={{ width: 50, height: 50, borderRadius: 25 }}
+                ></ShimerPlaceHolder>
+                <ShimerPlaceHolder
+                  style={{ flex: 2, height: 50, marginLeft: 10 }}
+                ></ShimerPlaceHolder>
+                <ShimerPlaceHolder
+                  style={{ flex: 1, height: 50, marginLeft: 10 }}
+                ></ShimerPlaceHolder>
+              </View>
+            );
+          })}
+        </View>
+      )}
+      {!isLoading && (
+        <ScrollView>
           <View>
-            <View style={[tw`mr-5 ml-5  mb-20`]}>
-              {conversations?.conversations?.map((conv, i) => {
-                return (
-                  <View style={[tw`mt-8`]} key={i}>
-                    <ConversationItem
-                      image={getConversationProfileImage(conv)[0] || User2}
-                      title={getConversationProfileImage(conv)[1]}
-                      subtitle={
-                        (lastMessage?.conversation == conv._id &&
-                          lastMessage?.content) ||
-                        conv.lastMessage?.content
-                      }
-                      time="11:20"
-                      icon={faCheck}
-                      currentUser={currentUser}
-                      unread={unread}
-                      date={
-                        (lastMessage?.conversation == conv._id &&
-                          lastMessage?.date) ||
-                        conv.lastMessage?.updatedAt ||
-                        "00:01"
-                      }
-                      sender={
-                        (lastMessage?.conversation == conv._id &&
-                          lastMessage?.sender) ||
-                        conv.lastMessage?.sender
-                      }
-                      onPress={() => onConvPress(conv)}
-                    />
-                  </View>
-                );
-              })}
+            <View>
+              <View style={[tw`mr-5 ml-5  mb-20`]}>
+                {conversations?.conversations?.map((conv, i) => {
+                  return (
+                    <View style={[tw`mt-8`]} key={i}>
+                      <ConversationItem
+                        image={getConversationProfileImage(conv)[0] || User2}
+                        title={getConversationProfileImage(conv)[1]}
+                        subtitle={
+                          (lastMessage?.conversation == conv._id &&
+                            lastMessage?.content) ||
+                          conv.lastMessage?.content
+                        }
+                        time="11:20"
+                        icon={faCheck}
+                        currentUser={currentUser}
+                        unread={unread}
+                        date={
+                          (lastMessage?.conversation == conv._id &&
+                            lastMessage?.date) ||
+                          conv.lastMessage?.updatedAt ||
+                          "00:01"
+                        }
+                        sender={
+                          (lastMessage?.conversation == conv._id &&
+                            lastMessage?.sender) ||
+                          conv.lastMessage?.sender
+                        }
+                        onPress={() => onConvPress(conv)}
+                      />
+                    </View>
+                  );
+                })}
+              </View>
             </View>
           </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      )}
     </View>
   );
 };

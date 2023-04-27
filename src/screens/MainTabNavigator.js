@@ -1,7 +1,7 @@
 import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { NavigationContainer } from "@react-navigation/native";
-import { StatusBar } from "react-native";
+import { StatusBar, View } from "react-native";
 import { StatusBar as ExpoStatusBar } from "expo-status-bar";
 import HomeScreen from "./Home/home";
 import MessagesScreen from "./Messages/message";
@@ -19,11 +19,14 @@ import { useState } from "react";
 import LoginScreen from "./login/login";
 import { useSelector } from "react-redux";
 import { userSelectors } from "../redux/user/user.selectors";
+import { conversationSelectors } from "../redux/ conversations/conversation.selectors";
+import { Text } from "react-native";
 
 const MainTabNavigator = () => {
   const { currentUser } = useSelector(userSelectors.selectUser);
   const [auth, setAuth] = useState(false);
   const Tab = createBottomTabNavigator();
+  const { unread } = useSelector(conversationSelectors.selectConversations);
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -56,7 +59,31 @@ const MainTabNavigator = () => {
           }
 
           // You can return any component that you like here!
-          return <FontAwesomeIcon icon={iconName} size={size} color={color} />;
+          return (
+            <View style={[{ position: "relative" }]}>
+              {route.name === "Messages" && unread > 0 && (
+                <View
+                  style={[
+                    {
+                      position: "absolute",
+                      width: 20,
+                      height: 20,
+                      borderRadius: 10,
+                      backgroundColor: "red",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      right: -10,
+                      top: -5,
+                      zIndex: 2,
+                    },
+                  ]}
+                >
+                  <Text style={{ color: "white" }}>{unread}</Text>
+                </View>
+              )}
+              <FontAwesomeIcon icon={iconName} size={size} color={color} />
+            </View>
+          );
         },
         tabBarActiveTintColor: APP_COLORS.secondary_color_blue,
         tabBarInactiveTintColor: "gray",

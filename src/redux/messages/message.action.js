@@ -1,5 +1,6 @@
 import { axiosEvent } from "../../axios";
-
+// import * as mime from "react-native-mime-types";
+import mime from "mime";
 const { MESSAGES_TYPES } = require("./message.type");
 
 const setMessageLoading = () => {
@@ -97,8 +98,48 @@ export const messagesActions = {
       }
     },
 
-  addMessage: (message) => (dispatch) => {
+  addMessage: (message, play) => (dispatch) => {
     console.log("dispatching the new");
     dispatch(addNewMessage(message));
+    play && play();
+  },
+
+  sendImage: (conversationId, to, token, image) => async (dispatch) => {
+    dispatch(sendMessageLoading());
+
+    try {
+      let data = new FormData();
+      data.append("image", {
+        uri: image.uri,
+        type: mime.getType(image.uri),
+        name: "randomimage" + mime.getType(image.uri).split("/")[1],
+      });
+      // console.log(data);
+      let sent = await axiosEvent.post(
+        `/users/conversation/${conversationId}/${to}/message/image`,
+        data,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      dispatch(sendMessageSuccess(null));
+    } catch (error) {
+      console.log(error?.response?.data || error);
+      dispatch(sendMessageError(error.message));
+    }
   },
 };
+
+function dataURLtoFile(dataurl) {
+  var enc = window.atob(dataurl);
+
+  var image = new File([enc], "random.jpg", {
+    type: "image/jpeg",
+  });
+
+  return image;
+}

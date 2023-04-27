@@ -42,11 +42,18 @@ export const messagesReducers = (state = INITIAL_STATE, action) => {
         error: null,
         // messages: [payload, ...messages],
       };
+    case MESSAGES_TYPES.SEND_NEW_MESSAGE_ERROR:
+      return {
+        ...state,
+        sendLoading: false,
+        error: payload,
+      };
     case MESSAGES_TYPES.SET_NEW_MESSAGE:
       return {
         ...state,
         messages: [payload, ...state.messages],
       };
+
     default:
       return state;
   }

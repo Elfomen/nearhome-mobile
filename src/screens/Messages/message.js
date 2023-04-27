@@ -1,10 +1,12 @@
 import {
+  faCamera,
   faCheckDouble,
   faChevronLeft,
   faClock,
   faEllipsisVertical,
   faFaceSmile,
   faFile,
+  faImage,
   faMicrophone,
   faPaperclip,
   faPaperPlane,
@@ -16,9 +18,10 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
 import { useNavigation } from "@react-navigation/native";
 import { Audio, Video } from "expo-av";
-import { startTransition, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
   FlatList,
   Image,
   ImageBackground,
@@ -42,13 +45,18 @@ import NoImage from "../../assets/images/no-image.png";
 import { messagesActions } from "../../redux/messages/message.action";
 import { messageSelectors } from "../../redux/messages/message.selectors";
 import { socket } from "../../../socket";
+import { createShimmerPlaceholder } from "react-native-shimmer-placeholder";
 import { conversationSelectors } from "../../redux/ conversations/conversation.selectors";
 import { conversationActions } from "../../redux/ conversations/conversation.actions";
+import { LinearGradient } from "expo-linear-gradient";
+import * as ImagePicker from "expo-image-picker";
+import { RectButton, Swipeable } from "react-native-gesture-handler";
 const MessagesScreen = ({ route }) => {
   const { currentUser } = useSelector(userSelectors.selectUser);
   const navigation = useNavigation();
   const { conversationId, user1, user2 } = route.params;
 
+  const ShimerPlaceHolder = createShimmerPlaceholder(LinearGradient);
   const { messages, isLoading, error, sendLoading } = useSelector(
     messageSelectors.selectMessages
   );
@@ -60,8 +68,32 @@ const MessagesScreen = ({ route }) => {
   const [messageInput, setMessageInput] = useState("");
   const [sound, setSound] = useState();
   const [showEmoji, setShowEmoji] = useState(false);
+  const [image, setImage] = useState(null);
 
   const dispatch = useDispatch();
+
+  const close = () => {};
+
+  const renderLeftActions = (progress, dragX) => {
+    const trans = dragX.interpolate({
+      inputRange: [0, 50, 100, 101],
+      outputRange: [-20, 0, 0, 1],
+    });
+    return (
+      <RectButton style={styles.leftAction} onPress={close}>
+        <Animated.Text
+          style={[
+            styles.actionText,
+            {
+              transform: [{ translateX: trans }],
+            },
+          ]}
+        >
+          Archive
+        </Animated.Text>
+      </RectButton>
+    );
+  };
 
   const sendMessage = async () => {
     if (messageInput) {
@@ -96,6 +128,62 @@ const MessagesScreen = ({ route }) => {
     }
   }
 
+  const sendImage = async () => {
+    try {
+      let result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.All,
+        allowsEditing: true,
+        // aspect: [8, 7],
+        quality: 1,
+      });
+
+      dispatch(
+        messagesActions.sendImage(
+          conversationId,
+          user1._id === currentUser.userId ? user2._id : user1._id,
+          currentUser.token,
+          result.assets[0]
+        )
+      );
+
+      // let r = new File([result.assets[0].uri], "foemna yannick.jpg");
+      console.log(result.assets);
+      if (!result.canceled) {
+        setImage(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  const sendCameraImage = async () => {
+    try {
+      let result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.All,
+        allowsEditing: true,
+        // aspect: [4, 3],
+        quality: 1,
+      });
+
+      dispatch(
+        messagesActions.sendImage(
+          conversationId,
+          user1._id === currentUser.userId ? user2._id : user1._id,
+          currentUser.token,
+          result.assets[0]
+        )
+      );
+
+      console.log(typeof result[0].uri);
+
+      if (!result.canceled) {
+        setImage(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
   useEffect(() => {
     return sound
       ? () => {
@@ -115,8 +203,6 @@ const MessagesScreen = ({ route }) => {
 
   useEffect(() => {
     socket.getSocket().on("message", (data) => {
-      console.log("******** logging my data");
-      console.log(data);
       if (data.action === "new_message") {
         // if (data.to === currentUser.userId) {
         let sent = {
@@ -129,12 +215,26 @@ const MessagesScreen = ({ route }) => {
 
         dispatch(messagesActions.addMessage(sent));
         // }
-
-        // setPresentMessages([...presentMessages, sent]);
       }
     });
-
     return () => socket.getSocket().removeAllListeners("message");
+  }, [io]);
+
+  useEffect(() => {
+    io.on("image_sent", (data) => {
+      console.log("************ the image socket notification");
+      console.log(data);
+      let sent = data.message;
+
+      dispatch(
+        messagesActions.addMessage(
+          sent,
+          data.message.sender === currentUser.userId && playSound
+        )
+      );
+    });
+
+    return () => io.removeAllListeners("image_sent");
   }, [io]);
 
   return (
@@ -147,150 +247,182 @@ const MessagesScreen = ({ route }) => {
         },
       ]}
     >
-      {isLoading ? (
-        <View>
-          <ActivityIndicator
-            size="large"
-            color={APP_THEMES.colors.secondary_color_blue}
+      <View style={[tw`h-full`]}>
+        <View
+          style={[
+            tw`pb-2 pt-5 pl-3 pr-3`,
+            {
+              flexDirection: "row",
+              alignItems: "center",
+              backgroundColor: "white",
+            },
+          ]}
+        >
+          <TouchableOpacity
+            style={{ flex: 2 }}
+            onPress={() => navigation.goBack()}
+          >
+            <FontAwesomeIcon
+              icon={faChevronLeft}
+              size={20}
+              color={APP_THEMES.colors.color_gray}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity>
+            <FontAwesomeIcon
+              icon={faEllipsisVertical}
+              size={20}
+              color={APP_THEMES.colors.color_gray}
+            />
+          </TouchableOpacity>
+        </View>
+        <View style={[tw`pb-3 pl-3 pr-3`, { backgroundColor: "white" }]}>
+          <MessageHeaders
+            title={
+              user1._id === currentUser.userId
+                ? `${user2.firstname} ${user2.lastname}`
+                : `${user1.firstname} ${user1.lastname}`
+            }
+            subtitle="Online"
           />
         </View>
-      ) : (
-        <View style={[tw`h-full`]}>
-          <View
-            style={[
-              tw`pb-2 pt-5 pl-3 pr-3`,
-              {
-                flexDirection: "row",
-                alignItems: "center",
-                backgroundColor: "white",
-              },
-            ]}
-          >
-            <TouchableOpacity
-              style={{ flex: 2 }}
-              onPress={() => navigation.goBack()}
-            >
-              <FontAwesomeIcon
-                icon={faChevronLeft}
-                size={20}
-                color={APP_THEMES.colors.color_gray}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity>
-              <FontAwesomeIcon
-                icon={faEllipsisVertical}
-                size={20}
-                color={APP_THEMES.colors.color_gray}
-              />
-            </TouchableOpacity>
-          </View>
-          <View style={[tw`pb-3 pl-3 pr-3`, { backgroundColor: "white" }]}>
-            <MessageHeaders
-              title={
-                user1._id === currentUser.userId
-                  ? `${user2.firstname} ${user2.lastname}`
-                  : `${user1.firstname} ${user1.lastname}`
-              }
-              subtitle="Online"
-            />
-          </View>
 
-          {/* <ScrollView style={[tw`pl-3 pr-3`, { height: "76%" }]}> */}
-          <Text
-            style={[
-              tw`mt-3 mb-1`,
-              {
-                fontFamily: APP_THEMES.fontFamilies.body,
-                color: APP_THEMES.colors.color_gray,
-                textAlign: "center",
-                fontWeight: "700",
-              },
-            ]}
-          >
-            Today
-          </Text>
-
-          {messages && (
-            <FlatList
-              inverted
-              scrollsToTop
-              style={[{ height: "76%" }]}
-              data={[...messages]}
-              keyExtractor={(item) => item._id}
-              renderItem={({ item }) => (
-                <View style={[]}>
-                  <MessageComponent
-                    content={item?.content}
-                    time={item.updatedAt || "00:01"}
-                    isSender={item?.sender == currentUser.userId ? true : false}
-                    videoUrl={item?.videoUrl}
-                    audioUrl={item?.audioUrl}
-                    imageUrl={item?.imageUrl}
-                    docUrl={item?.docUrl}
-                  />
+        {isLoading && (
+          <View style={[tw`ml-3 mr-3 mt-3 h-full`]}>
+            {[1, 1, 1, 1, 1, 1, 1, 1, 1, 1].map((val, i) => {
+              return (
+                <View
+                  key={i}
+                  style={[
+                    { flexDirection: "row", alignItems: "center", flex: 1 },
+                    ,
+                  ]}
+                >
+                  <ShimerPlaceHolder
+                    style={{
+                      flex: 3,
+                      height: 50,
+                      marginLeft: 10,
+                      borderRadius: 8,
+                    }}
+                  ></ShimerPlaceHolder>
+                  <ShimerPlaceHolder
+                    style={{
+                      flex: 1,
+                      height: 50,
+                      marginLeft: 10,
+                      borderRadius: 8,
+                    }}
+                  ></ShimerPlaceHolder>
                 </View>
-              )}
-            />
-          )}
+              );
+            })}
+          </View>
+        )}
 
-          <View style={[tw`mb-20`]}></View>
+        {/* <ScrollView style={[tw`pl-3 pr-3`, { height: "76%" }]}> */}
+        {!isLoading && (
+          <>
+            <Text
+              style={[
+                tw`mt-3 mb-1`,
+                {
+                  fontFamily: APP_THEMES.fontFamilies.body,
+                  color: APP_THEMES.colors.color_gray,
+                  textAlign: "center",
+                  fontWeight: "700",
+                },
+              ]}
+            >
+              Today
+            </Text>
 
-          <View
-            style={[
-              tw`p-5`,
-              {
-                backgroundColor: "white",
-                flexDirection: "row",
-                alignItems: "center",
-                position: "absolute",
-                bottom: 0,
-              },
-            ]}
-          >
-            <View style={[{ flexDirection: "row", alignItems: "center" }]}>
-              <TouchableOpacity style={[tw`mr-3`]}>
-                <FontAwesomeIcon
-                  color={APP_THEMES.colors.color_gray}
-                  size={21}
-                  icon={faPaperclip}
-                />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => setShowEmoji(!showEmoji)}>
-                <FontAwesomeIcon
-                  color={APP_THEMES.colors.color_gray}
-                  size={21}
-                  icon={faFaceSmile}
-                />
-              </TouchableOpacity>
-            </View>
-
-            <View style={[{ flex: 2 }, tw`ml-5`]}>
-              <TextInput
-                placeholder="Message..."
-                value={messageInput}
-                onChangeText={(e) => setMessageInput(e)}
+            {messages && (
+              <FlatList
+                inverted
+                scrollsToTop
+                style={[{ height: "70%" }]}
+                data={[...messages]}
+                keyExtractor={(item) => item._id}
+                renderItem={({ item }) => (
+                  <Swipeable renderLeftActions={renderLeftActions}>
+                    <View style={[]}>
+                      <MessageComponent
+                        content={item?.content}
+                        time={item.updatedAt || "00:01"}
+                        isSender={
+                          item?.sender == currentUser.userId ? true : false
+                        }
+                        videoUrl={item?.videoUrl}
+                        audioUrl={item?.audioUrl}
+                        imageUrl={item?.imageUrl}
+                        docUrl={item?.docUrl}
+                      />
+                    </View>
+                  </Swipeable>
+                )}
               />
-            </View>
+            )}
 
-            <View style={[{ flexDirection: "row", alignItems: "center" }]}>
-              <TouchableOpacity onPress={sendMessage}>
-                {sendLoading ? (
-                  <ActivityIndicator
-                    color={APP_THEMES.colors.secondary_color_blue}
-                    size="small"
-                  />
-                ) : (
+            <View style={[tw`mb-20`]}></View>
+
+            <View
+              style={[
+                tw`p-5`,
+                {
+                  backgroundColor: "white",
+                  flexDirection: "row",
+                  alignItems: "center",
+                  position: "absolute",
+                  bottom: 0,
+                },
+              ]}
+            >
+              <View style={[{ flexDirection: "row", alignItems: "center" }]}>
+                <TouchableOpacity style={[tw`mr-3`]} onPress={sendImage}>
                   <FontAwesomeIcon
                     color={APP_THEMES.colors.color_gray}
                     size={21}
-                    icon={messageInput ? faPaperPlane : faMicrophone}
+                    icon={faImage}
                   />
-                )}
-              </TouchableOpacity>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={sendCameraImage}>
+                  <FontAwesomeIcon
+                    color={APP_THEMES.colors.color_gray}
+                    size={21}
+                    icon={faCamera}
+                  />
+                </TouchableOpacity>
+              </View>
+
+              <View style={[{ flex: 2 }, tw`ml-5`]}>
+                <TextInput
+                  placeholder="Message..."
+                  value={messageInput}
+                  onChangeText={(e) => setMessageInput(e)}
+                />
+              </View>
+
+              <View style={[{ flexDirection: "row", alignItems: "center" }]}>
+                <TouchableOpacity onPress={sendMessage}>
+                  {sendLoading ? (
+                    <ActivityIndicator
+                      color={APP_THEMES.colors.secondary_color_blue}
+                      size="small"
+                    />
+                  ) : (
+                    <FontAwesomeIcon
+                      color={APP_THEMES.colors.color_gray}
+                      size={21}
+                      icon={messageInput ? faPaperPlane : faMicrophone}
+                    />
+                  )}
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
-        </View>
-      )}
+          </>
+        )}
+      </View>
     </View>
   );
 };
@@ -404,6 +536,7 @@ const MessageComponent = (props) => {
       {imageUrl && (
         <View style={[styles.imageContainer, tw`mt-4`, { borderRadius: 8 }]}>
           <ImageBackground
+            // source={{ uri: `${GlobalConstants.baseUrl}/${imageUrl}` }}
             source={NoImage}
             resizeMode="cover"
             style={{ flex: 1 }}
